@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>config/config.ini</file>
-        <file>resources/ANIME.ico</file>
+        <file>resources/icon/app/icon.ico</file>
     </qresource>
 </RCC>
