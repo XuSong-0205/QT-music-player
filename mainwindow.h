@@ -14,6 +14,7 @@ class QLabel;
 class QSlider;
 class QSettings;
 class QPushButton;
+class QListWidget;
 class QMediaContent;
 class QMediaPlayer;
 class QMediaPlaylist;
@@ -37,10 +38,12 @@ private:
     // 配置函数
     void initConfig();
     void readConfig();
+    void saveConfig();
     void readLocalMusic(QString musicPath);
 
     // ui 界面
     void initUi();
+
 
     // 功能函数
     void playMusic(QString musicPath);
@@ -50,9 +53,19 @@ private:
     void playPrevMusic();
     void playRandomMusic();
 
+
+
     QMediaPlaylist* getCurrPlayList() const;    // 获取当前播放列表
     QString getCurrPlayMusicPath() const;       // 获取当前播放的音乐全路径
     QString getCurrPlayMusicName() const;       // 获取当前播放的音乐名
+
+private:
+    // 读取键值为 key 对应类型的值，如果不存在该值则使用默认值创建
+    int getIntConfigValue(QString key, int defaultValue = 0);
+    bool getBoolConfigValue(QString key, bool defaultValue = false);
+    double getDoubleConfigValue(QString key, double defaultValue = 0);
+    QString getStringConfigValue(QString key, QString defaultValue = "");
+
 
 
 private slots:
@@ -65,6 +78,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
 
+    QSettings* m_config = nullptr;                  // 配置文件
     QMediaPlayer* m_musicPlayer = nullptr;          // 音乐播放器
     QMediaPlaylist* m_localMusicPlayList = nullptr; // 播放列表
 
@@ -76,6 +90,7 @@ private:
     // todo
     // 新写一个类，按钮，界面，功能
     QPushButton* m_buttonLocalMusic = nullptr;      // 本地音乐
+    QListWidget* m_localListWidget = nullptr;       // 本地音乐列表
     QPushButton* m_buttonMyLikeMusic = nullptr;     // 我喜欢
 
 
@@ -84,8 +99,6 @@ private:
     QPushButton* m_buttonPrevMusic = nullptr;       // 上一曲按钮
     QPushButton* m_buttonNextMusic = nullptr;       // 下一曲按钮
     QPushButton* m_buttonPauseMusic = nullptr;      // 暂停播放
-
-    QSettings* m_config = nullptr;                  // 配置文件
 
 };
 

@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "musicpage.h"
 
 #include <QDir>
 #include <QUrl>
@@ -9,8 +8,10 @@
 #include <QLabel>
 #include <QDebug>
 #include <QSlider>
+#include <QTextCodec>
 #include <qsettings.h>
 #include <QPushButton>
+#include <QListWidget>
 #include <QMediaContent>
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
@@ -39,7 +40,11 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+
+    // 保存配置
+    saveConfig();
 }
+
 
 
 void MainWindow::initWindow()
@@ -63,12 +68,10 @@ void MainWindow::initMusicPlay()
 {
     // 初始化播放器，本地播放列表
     m_musicPlayer = new QMediaPlayer(this);
-    m_musicPlayer->setVolume(40);
     m_localMusicPlayList = new QMediaPlaylist(m_musicPlayer);
     m_musicPlayer->setPlaylist(m_localMusicPlayList);
     connect(m_musicPlayer, &QMediaPlayer::currentMediaChanged, this, &MainWindow::musicChanged);
     connect(m_musicPlayer, &QMediaPlayer::positionChanged, this, &MainWindow::musicPositionChanged);
-
 }
 
 // 配置初始化
@@ -77,10 +80,14 @@ void MainWindow::initConfig()
     // 读取配置文件
     readConfig();
 
+    // 读取音乐路径
+    QString musicPath = getStringConfigValue("path/music_path", "E:/music");
     // 读取本地音乐
-    QString musicPath = m_config->value("path/music_path").toString();
     readLocalMusic(musicPath);
 
+    // 读取音量
+    int volume = getIntConfigValue("music/volume", 40);
+    m_musicPlayer->setVolume(volume);
 }
 
 // 读取配置
@@ -88,30 +95,18 @@ void MainWindow::readConfig()
 {
     if (m_config == nullptr)
     {
-        QString configPath = ":/config/config.ini";
-        if (!QFile::exists(configPath))
-        {
-            // todo
-            // 弹出一个错误窗口，显示缺失配置文件，确定并退出
-            qDebug() << tr("配置文件不存在！");
-            return;
-        }
-        else
-        {
-            m_config = new QSettings(configPath, QSettings::IniFormat, this);
-            m_config->setIniCodec("utf-8");
-        }
+        QString configPath = "./config/config.ini";
+        m_config = new QSettings(configPath, QSettings::IniFormat, this);
+        m_config->setIniCodec("UTF-8");
     }
+}
 
-    // 读取音乐路径
-    QString musicPath = m_config->value("path/music_path").toString();
-    if (musicPath == "")
-    {
-        m_config->setValue("path/music_path", "E:/music");
-        musicPath = m_config->value("path/music_path").toString();
-        // todo
-        // 没有写入默认配置问题
-    }
+// 保存配置
+void MainWindow::saveConfig()
+{
+    // 读取音乐播放器音量写入配置文件
+    m_config->setValue("music/volume", m_musicPlayer->volume());
+
 }
 
 // 读取音乐目录的所有音乐文件名
@@ -133,16 +128,6 @@ void MainWindow::readLocalMusic(QString musicPath)
 
 }
 
-
-template<typename T>
-void showValue(const T& value)
-{
-    qDebug() << "value: " << value;
-}
-
-
-
-
 // 初始化 ui
 void MainWindow::initUi()
 {
@@ -150,7 +135,7 @@ void MainWindow::initUi()
     m_volumeBar = new QSlider(Qt::Horizontal, this);
     m_volumeBar->setMinimum(0);
     m_volumeBar->setMaximum(100);
-    m_volumeBar->setValue(40);
+    m_volumeBar->setValue(m_musicPlayer->volume());
     m_volumeBar->resize(100, 20);
     m_volumeBar->move(560, 430);
     m_volumeBar->show();
@@ -182,12 +167,46 @@ void MainWindow::initUi()
 
 
     // todo
-    // 音乐列表(QListWidget)
-    // 本地音乐
+    // 点击音乐列表不切换歌曲，双击切换
+    // 本地音乐按钮
     m_buttonLocalMusic = new QPushButton(this);
     m_buttonLocalMusic->setText(tr("本地音乐"));
     m_buttonLocalMusic->move(40, 100);
     m_buttonLocalMusic->show();
+    // 本地音乐列表
+    m_localListWidget = new QListWidget(this);
+    m_localListWidget->resize(400, 300);
+    m_localListWidget->move(240, 40);
+    m_localListWidget->hide();
+    QMediaPlaylist* playlist = m_musicPlayer->playlist();
+    if (playlist == nullptr) return;
+    for (int i = 0; i < playlist->mediaCount(); ++i)
+    {
+        QMediaContent content = playlist->media(i);
+        QString musicName = content.canonicalUrl().fileName().split("/").back();
+        musicName = musicName.split(".").front();
+        QListWidgetItem* widgetItem = new QListWidgetItem(m_localListWidget);
+        widgetItem->setText(musicName);
+        m_localListWidget->insertItem(m_localListWidget->count() + 1, widgetItem);
+    }
+    // 显示/隐藏 本地音乐列表
+    connect(m_buttonLocalMusic, &QPushButton::clicked, this, [&](bool){
+        if (m_localListWidget->isHidden())
+        {
+            m_localListWidget->show();
+        }
+        else
+        {
+            m_localListWidget->hide();
+        }
+    });
+    // 点击音乐列表切换音乐
+    connect(m_localListWidget, &QListWidget::currentRowChanged, this, [&](int row){
+        playMusic(row);
+    });
+
+
+
     // 我喜欢
     m_buttonMyLikeMusic = new QPushButton(this);
     m_buttonMyLikeMusic->setText(tr("我喜欢"));
@@ -205,12 +224,13 @@ void MainWindow::initUi()
 
     //////////////////////////////////////////////////
     // 按钮
-    // 设置上一曲，下一曲按钮
+    // 上一曲按钮
     m_buttonPrevMusic = new QPushButton(this);
     m_buttonPrevMusic->setText(tr("上一曲"));
     m_buttonPrevMusic->resize(60, 20);
     m_buttonPrevMusic->move(220, 430);
     m_buttonPrevMusic->show();
+    // 下一曲按钮
     m_buttonNextMusic = new QPushButton(this);
     m_buttonNextMusic->setText(tr("下一曲"));
     m_buttonNextMusic->resize(60, 20);
@@ -237,9 +257,6 @@ void MainWindow::playMusic(QString musicPath)
 {
     m_musicPlayer->setMedia(QUrl::fromLocalFile(musicPath));
     m_musicPlayer->play();
-//    QString musicName = musicPath.split("/").back();
-//    m_playMusicName->setText(musicName);
-//    qDebug() << tr("开始播放音乐: %1").arg(musicPath);
 }
 
 // 播放播放列表中下标为 index 的音乐
@@ -254,10 +271,6 @@ void MainWindow::playMusic(int index)
 
     currPlayList->setCurrentIndex(index);
     m_musicPlayer->play();
-//    // 显示正在播放的音乐名
-//    QString musicName = getCurrPlayMusicName();
-//    m_playMusicName->setText(musicName);
-//    qDebug() << tr("开始播放音乐: %1").arg(musicName);
 }
 
 // 暂停/开始
@@ -332,6 +345,51 @@ QString MainWindow::getCurrPlayMusicName() const
     QString musicPath = getCurrPlayMusicPath();
     QString tempMusicName = musicPath.split("/").back();
     return tempMusicName.split(".").front();
+}
+
+// 获取配置文件中的值
+int MainWindow::getIntConfigValue(QString key, int defaultValue)
+{
+    QVariant var = m_config->value(key);
+    if (var.isNull())
+    {
+        m_config->setValue(key, defaultValue);
+    }
+
+    return m_config->value(key).toInt();
+}
+
+bool MainWindow::getBoolConfigValue(QString key, bool defaultValue)
+{
+    QVariant var = m_config->value(key);
+    if (var.isNull())
+    {
+        m_config->setValue(key, defaultValue);
+    }
+
+    return m_config->value(key).toBool();
+}
+
+double MainWindow::getDoubleConfigValue(QString key, double defaultValue)
+{
+    QVariant var = m_config->value(key);
+    if (var.isNull())
+    {
+        m_config->setValue(key, defaultValue);
+    }
+
+    return m_config->value(key).toDouble();
+}
+
+QString MainWindow::getStringConfigValue(QString key, QString defaultValue)
+{
+    QVariant var = m_config->value(key);
+    if (var.isNull())
+    {
+        m_config->setValue(key, defaultValue);
+    }
+
+    return m_config->value(key).toString();
 }
 
 // 播放的音乐切换
