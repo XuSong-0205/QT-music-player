@@ -17,11 +17,9 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-    musicpage.cpp
+        mainwindow.cpp
 
-HEADERS  += mainwindow.h \
-    musicpage.h
+HEADERS  += mainwindow.h
 
 FORMS    += mainwindow.ui
 

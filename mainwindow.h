@@ -11,6 +11,7 @@ class MainWindow;
 
 
 class QLabel;
+class QWidget;
 class QSlider;
 class QSettings;
 class QPushButton;
@@ -54,10 +55,15 @@ private:
     void playRandomMusic();
 
 
-
     QMediaPlaylist* getCurrPlayList() const;    // 获取当前播放列表
     QString getCurrPlayMusicPath() const;       // 获取当前播放的音乐全路径
     QString getCurrPlayMusicName() const;       // 获取当前播放的音乐名
+
+
+    void changeShowWidget(QWidget* widget);     // 切换当前显示的界面
+    void setBackground(QString backgroundPath); // 设置背景图片
+    void setWidgetTransparent(QWidget* widget, double level = 0.0 /*0.0 - 1.0*/); // 设置窗口透明
+
 
 private:
     // 读取键值为 key 对应类型的值，如果不存在该值则使用默认值创建
@@ -72,7 +78,6 @@ private slots:
     void musicChanged(const QMediaContent& media);  // 播放的音乐切换
     void musicPositionChanged(qint64 value);        // 音乐进度变化
     void setMusicPosition(int value);               // 设置音乐进度
-
 
 
 private:
@@ -90,8 +95,18 @@ private:
     // todo
     // 新写一个类，按钮，界面，功能
     QPushButton* m_buttonLocalMusic = nullptr;      // 本地音乐
-    QListWidget* m_localListWidget = nullptr;       // 本地音乐列表
-    QPushButton* m_buttonMyLikeMusic = nullptr;     // 我喜欢
+    QListWidget* m_listWidgetLocal = nullptr;       // 本地音乐列表
+    //==//
+    QPushButton* m_buttonMyLike = nullptr;          // 我喜欢
+    //==//
+    QPushButton* m_buttonSetup = nullptr;           // 设置按钮
+    QWidget* m_widgetSetup = nullptr;               // 设置界面
+    QPushButton* m_buttonChoicePath = nullptr;      // 选择音乐路径
+    QPushButton* m_buttonChoiceBackground = nullptr;// 选择背景图片
+
+
+    QWidget* m_widgetCurrShow = nullptr;            // 当前显示的界面
+
 
 
 

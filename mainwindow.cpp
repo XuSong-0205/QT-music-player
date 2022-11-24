@@ -8,7 +8,10 @@
 #include <QLabel>
 #include <QDebug>
 #include <QSlider>
-#include <QTextCodec>
+#include <QWidget>
+#include <QPixmap>
+#include <QPalette>
+#include <QFileDialog>
 #include <qsettings.h>
 #include <QPushButton>
 #include <QListWidget>
@@ -17,6 +20,12 @@
 #include <QMediaPlaylist>
 
 #include <ctime>
+
+
+// 显示界面的大小
+static const QSize WIDGET_SIZE(400, 300);
+static constexpr int WIDGET_X = 240;
+static constexpr int WIDGET_Y = 40;
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -88,6 +97,13 @@ void MainWindow::initConfig()
     // 读取音量
     int volume = getIntConfigValue("music/volume", 40);
     m_musicPlayer->setVolume(volume);
+
+    // 读取背景图片
+    QString backgroundPath = getStringConfigValue("path/background_path");
+    if (!backgroundPath.isEmpty())
+    {
+        setBackground(backgroundPath);
+    }
 }
 
 // 读取配置
@@ -166,18 +182,18 @@ void MainWindow::initUi()
     m_musicDuration->show();
 
 
-    // todo
-    // 点击音乐列表不切换歌曲，双击切换
     // 本地音乐按钮
     m_buttonLocalMusic = new QPushButton(this);
     m_buttonLocalMusic->setText(tr("本地音乐"));
     m_buttonLocalMusic->move(40, 100);
     m_buttonLocalMusic->show();
     // 本地音乐列表
-    m_localListWidget = new QListWidget(this);
-    m_localListWidget->resize(400, 300);
-    m_localListWidget->move(240, 40);
-    m_localListWidget->hide();
+    m_listWidgetLocal = new QListWidget(this);
+    m_listWidgetLocal->resize(WIDGET_SIZE);
+    m_listWidgetLocal->move(WIDGET_X, WIDGET_Y);
+    m_listWidgetLocal->hide();
+    m_listWidgetLocal->setWindowFlags(m_listWidgetLocal->windowFlags() | Qt::FramelessWindowHint);
+    m_listWidgetLocal->setAttribute(Qt::WA_TranslucentBackground);
     QMediaPlaylist* playlist = m_musicPlayer->playlist();
     if (playlist == nullptr) return;
     for (int i = 0; i < playlist->mediaCount(); ++i)
@@ -185,41 +201,74 @@ void MainWindow::initUi()
         QMediaContent content = playlist->media(i);
         QString musicName = content.canonicalUrl().fileName().split("/").back();
         musicName = musicName.split(".").front();
-        QListWidgetItem* widgetItem = new QListWidgetItem(m_localListWidget);
+        QListWidgetItem* widgetItem = new QListWidgetItem(m_listWidgetLocal);
         widgetItem->setText(musicName);
-        m_localListWidget->insertItem(m_localListWidget->count() + 1, widgetItem);
+        m_listWidgetLocal->insertItem(m_listWidgetLocal->count() + 1, widgetItem);
     }
     // 显示/隐藏 本地音乐列表
     connect(m_buttonLocalMusic, &QPushButton::clicked, this, [&](bool){
-        if (m_localListWidget->isHidden())
-        {
-            m_localListWidget->show();
-        }
-        else
-        {
-            m_localListWidget->hide();
-        }
+        changeShowWidget(m_listWidgetLocal);
     });
-    // 点击音乐列表切换音乐
-    connect(m_localListWidget, &QListWidget::currentRowChanged, this, [&](int row){
-        playMusic(row);
+    // 双击音乐列表切换音乐
+    connect(m_listWidgetLocal, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *item){
+        playMusic(item->listWidget()->currentRow());
     });
-
 
 
     // 我喜欢
-    m_buttonMyLikeMusic = new QPushButton(this);
-    m_buttonMyLikeMusic->setText(tr("我喜欢"));
-    m_buttonMyLikeMusic->move(40, 160);
-    m_buttonMyLikeMusic->show();
+    m_buttonMyLike = new QPushButton(this);
+    m_buttonMyLike->setText(tr("我喜欢"));
+    m_buttonMyLike->move(40, 160);
+    m_buttonMyLike->show();
 
 
-    // todo
+    // 设置按钮
     // 设置界面
+    m_buttonSetup = new QPushButton(this);
+    m_buttonSetup->setText(tr("设置"));
+    m_buttonSetup->move(40, 40);
+    m_buttonSetup->show();
+    m_widgetSetup = new QWidget(this);
+    m_widgetSetup->resize(WIDGET_SIZE);
+    m_widgetSetup->move(WIDGET_X, WIDGET_Y);
+    m_widgetSetup->hide();
+    m_widgetSetup->setAttribute(Qt::WA_TranslucentBackground, true);
+    connect(m_buttonSetup, &QPushButton::clicked, this, [this](){
+        changeShowWidget(m_widgetSetup);
+    });
+    // 选择音乐路径
+    m_buttonChoicePath = new QPushButton(m_widgetSetup);
+    m_buttonChoicePath->setText(tr("音乐路径"));
+    m_buttonChoicePath->move(60, 0);
+    m_buttonChoicePath->show();
+    connect(m_buttonChoicePath, &QPushButton::clicked, this, [this](){
+        QString dir = QDir("D:").exists() ? "D:" : "C:";
+        QString musicPath = QFileDialog::getExistingDirectory(m_widgetSetup, tr("选择音乐路径"), dir);
+        if (musicPath.isEmpty()) return;
+        m_config->setValue("path/music_path", musicPath);
+    });
+    // todo
+    // 设置透明度
+    // 选择背景图片
+    m_buttonChoiceBackground = new QPushButton(m_widgetSetup);
+    m_buttonChoiceBackground->setText(tr("设置背景"));
+    m_buttonChoiceBackground->move(60, 40);
+    m_buttonChoiceBackground->show();
+    connect(m_buttonChoiceBackground, &QPushButton::clicked, this, [this](){
+        QString dir = QDir("D:").exists() ? "D:" : "C:";
+        QString backgroundPath = QFileDialog::getOpenFileName(m_widgetSetup, tr("选择背景图片"), dir, tr("图片文件(*png *jpg)"));
+        if (backgroundPath.isEmpty()) return;
+        m_config->setValue("path/background_path", backgroundPath);
+        setBackground(backgroundPath);
+    });
+
 
 
     // todo
-    // 背景图
+    // 设置功能
+    // 1. 设置音乐路径
+    // 2. 设置背景图
+
 
 
     //////////////////////////////////////////////////
@@ -246,6 +295,7 @@ void MainWindow::initUi()
     m_buttonPauseMusic->move(320, 430);
     m_buttonPauseMusic->show();
     connect(m_buttonPauseMusic, &QPushButton::clicked, this, &MainWindow::pauseMusic);
+
 
 
 
@@ -345,6 +395,49 @@ QString MainWindow::getCurrPlayMusicName() const
     QString musicPath = getCurrPlayMusicPath();
     QString tempMusicName = musicPath.split("/").back();
     return tempMusicName.split(".").front();
+}
+
+// 切换当前显示的界面
+void MainWindow::changeShowWidget(QWidget *widget)
+{
+    if (m_widgetCurrShow)
+    {
+        if (m_widgetCurrShow != widget)
+        {
+            m_widgetCurrShow->hide();
+        }
+    }
+
+    if (widget->isHidden())
+    {
+        widget->show();
+        m_widgetCurrShow = widget;
+    }
+    else
+    {
+        widget->hide();
+        m_widgetCurrShow = nullptr;
+    }
+}
+
+// 设置背景图片
+void MainWindow::setBackground(QString backgroundPath)
+{
+    this->setAutoFillBackground(true);
+    QPixmap pixmap(backgroundPath);
+    QPalette palette;
+    palette.setBrush(QPalette::Window, QBrush(pixmap));
+    this->setPalette(palette);
+}
+
+// 设置窗口透明
+void MainWindow::setWidgetTransparent(QWidget *widget, double level)
+{
+//    QPalette palette;
+//    palette.setColor(QPalette::Background, QColor(0x00, 0x00, 0x00, alpha));
+//    widget->setPalette(palette);
+
+    widget->setWindowOpacity(level);
 }
 
 // 获取配置文件中的值
