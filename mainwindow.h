@@ -39,7 +39,6 @@ private:
     // 配置函数
     void initConfig();
     void readConfig();
-    void saveConfig();
     void readLocalMusic(QString musicPath);
 
     // ui 界面
@@ -101,8 +100,16 @@ private:
     //==//
     QPushButton* m_buttonSetup = nullptr;           // 设置按钮
     QWidget* m_widgetSetup = nullptr;               // 设置界面
+    // 1. 设置音乐路径
     QPushButton* m_buttonChoicePath = nullptr;      // 选择音乐路径
+    QLabel* m_labelMusicPath = nullptr;             // 音乐路径标签
+    // 2. 设置背景图片
     QPushButton* m_buttonChoiceBackground = nullptr;// 选择背景图片
+    QLabel* m_labelBackgroundPath = nullptr;        // 背景图片标签
+    // 3. 设置窗口透明度
+    QLabel* m_labelTransparent = nullptr;           // 窗口透明度标签
+    QLabel* m_labelTransparentValue = nullptr;      // 窗口透明度值
+    QSlider* m_sliderTransparent = nullptr;         // 窗口透明度滚动条
 
 
     QWidget* m_widgetCurrShow = nullptr;            // 当前显示的界面
