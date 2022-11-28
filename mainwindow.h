@@ -49,19 +49,18 @@ private:
     void playMusic(QString musicPath);
     void playMusic(int index);
     void pauseMusic();
-    void playNextMusic();
     void playPrevMusic();
-    void playRandomMusic();
-
+    void playNextMusic();
 
     QMediaPlaylist* getCurrPlayList() const;    // 获取当前播放列表
     QString getCurrPlayMusicPath() const;       // 获取当前播放的音乐全路径
     QString getCurrPlayMusicName() const;       // 获取当前播放的音乐名
 
-
     void changeShowWidget(QWidget* widget);     // 切换当前显示的界面
     void setBackground(QString backgroundPath); // 设置背景图片
     void setWidgetTransparent(QWidget* widget, double level = 0.0 /*0.0 - 1.0*/); // 设置窗口透明
+
+    QString setPlayMode(int mode) const;        // 设置播放模式
 
 
 private:
@@ -110,8 +109,7 @@ private:
     QLabel* m_labelTransparent = nullptr;           // 窗口透明度标签
     QLabel* m_labelTransparentValue = nullptr;      // 窗口透明度值
     QSlider* m_sliderTransparent = nullptr;         // 窗口透明度滚动条
-
-
+    //
     QWidget* m_widgetCurrShow = nullptr;            // 当前显示的界面
 
 
@@ -121,7 +119,7 @@ private:
     QPushButton* m_buttonPrevMusic = nullptr;       // 上一曲按钮
     QPushButton* m_buttonNextMusic = nullptr;       // 下一曲按钮
     QPushButton* m_buttonPauseMusic = nullptr;      // 暂停播放
-
+    QPushButton* m_buttonPlayMode = nullptr;        // 播放模式
 };
 
 #endif // MAINWINDOW_H

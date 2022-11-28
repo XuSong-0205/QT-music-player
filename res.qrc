@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/icon/app/icon.ico</file>
+        <file>resources/qss/qlist_widget.qss</file>
     </qresource>
 </RCC>

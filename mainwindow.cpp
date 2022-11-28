@@ -19,15 +19,13 @@
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 
-#include <ctime>
-
-
-// 窗口总大小
-static const QSize WINDOW_SIZE(720, 480);
 
 // 显示界面的位置
 static constexpr int WIDGET_X = 160;
 static constexpr int WIDGET_Y = 40;
+
+// 窗口总大小
+static const QSize WINDOW_SIZE(720, 480);
 // 显示界面的大小
 static const QSize WIDGET_SIZE(WINDOW_SIZE.width() - WIDGET_X, 350);
 
@@ -44,10 +42,7 @@ MainWindow::MainWindow(QWidget *parent) :
     this->removeToolBar(ui->mainToolBar);
     this->setStatusBar(nullptr);
     this->resize(WINDOW_SIZE);
-
-    // this->setWindowOpacity(0.8);
-    // this->setWindowFlags(Qt::FramelessWindowHint);
-    // this->setAttribute(Qt::WA_TranslucentBackground);
+    this->setWindowFlags(Qt::MSWindowsFixedSizeDialogHint);
 
     // 初始化窗口
     initWindow();
@@ -63,8 +58,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::initWindow()
 {
-    srand(0);
-
     // 初始化音乐播放器
     initMusicPlay();
 
@@ -247,9 +240,12 @@ void MainWindow::initUi()
     m_listWidgetLocal = new QListWidget(this);
     m_listWidgetLocal->resize(WIDGET_SIZE);
     m_listWidgetLocal->move(WIDGET_X, WIDGET_Y);
-    m_listWidgetLocal->setStyleSheet("background-color: transparent;");
     m_listWidgetLocal->sortItems();
     m_listWidgetLocal->hide();
+    QFile listWidgetQss(":/resources/qss/qlist_widget.qss");
+    listWidgetQss.open(QFile::ReadOnly);
+    m_listWidgetLocal->setStyleSheet(listWidgetQss.readAll());
+    listWidgetQss.close();
     // todo
     // 播放列表右键功能
     // a. 添加到某歌单
@@ -277,6 +273,7 @@ void MainWindow::initUi()
     });
 
 
+
     // 3. 我喜欢
     m_buttonMyLike = new QPushButton(this);
     m_buttonMyLike->setText(tr("我喜欢"));
@@ -300,19 +297,18 @@ void MainWindow::initUi()
     m_buttonPrevMusic = new QPushButton(this);
     m_buttonPrevMusic->setText(tr("上一曲"));
     m_buttonPrevMusic->resize(60, 20);
-    m_buttonPrevMusic->move(220, 430);
+    m_buttonPrevMusic->move(260, 430);
     m_buttonPrevMusic->setFlat(true);
     m_buttonPrevMusic->show();
     // 下一曲按钮
     m_buttonNextMusic = new QPushButton(this);
     m_buttonNextMusic->setText(tr("下一曲"));
     m_buttonNextMusic->resize(60, 20);
-    m_buttonNextMusic->move(440, 430);
+    m_buttonNextMusic->move(400, 430);
     m_buttonNextMusic->setFlat(true);
     m_buttonNextMusic->show();
     connect(m_buttonPrevMusic, &QPushButton::clicked, this, &MainWindow::playPrevMusic);
     connect(m_buttonNextMusic, &QPushButton::clicked, this, &MainWindow::playNextMusic);
-
     // 暂停按钮
     m_buttonPauseMusic = new QPushButton(this);
     m_buttonPauseMusic->setText(tr("暂停/开始"));
@@ -321,12 +317,20 @@ void MainWindow::initUi()
     m_buttonPauseMusic->setFlat(true);
     m_buttonPauseMusic->show();
     connect(m_buttonPauseMusic, &QPushButton::clicked, this, &MainWindow::pauseMusic);
-
-    // todo
     // 播放模式
-    // 1. 列表循环
-    // 2. 随机播放
-    // 3. 单曲循环
+    m_buttonPlayMode = new QPushButton(this);
+    m_buttonPlayMode->resize(60, 20);
+    m_buttonPlayMode->move(480, 430);
+    m_buttonPlayMode->setFlat(true);
+    m_buttonPlayMode->show();
+    setPlayMode(getIntConfigValue("music/play_mode", 0));
+    static int __mode = 0;
+    connect(m_buttonPlayMode, &QPushButton::clicked, this, [this](){
+        __mode = (__mode + 1) % 3;
+        setPlayMode(__mode);
+        m_config->setValue("music/play_mode", __mode);
+    });
+
 
     // todo
     // 歌词显示
@@ -348,7 +352,7 @@ void MainWindow::initUi()
     m_volumeBar->setMaximum(100);
     m_volumeBar->setValue(m_musicPlayer->volume());
     m_volumeBar->resize(100, 20);
-    m_volumeBar->move(560, 430);
+    m_volumeBar->move(580, 430);
     m_volumeBar->show();
     connect(m_volumeBar, &QSlider::valueChanged, m_musicPlayer, [this](int value){
         m_musicPlayer->setVolume(value);
@@ -364,19 +368,22 @@ void MainWindow::initUi()
     m_progressBar->move(0, 400);
     m_progressBar->show();
     connect(m_progressBar, &QSlider::sliderMoved, this, &MainWindow::setMusicPosition);
+    // todo
+    // 1. 进度条走过的变色
+    // 2. 点击进度条直接跳转到对应位置
 
 
     // 当前播放音乐显示
     m_playMusicName = new QLabel(this);
-    m_playMusicName->resize(180, 20);
-    m_playMusicName->move(20, 420);
+    m_playMusicName->resize(220, 20);
+    m_playMusicName->move(20, 430);
     m_playMusicName->show();
 
 
     // 进度条 播放时间/总时间 显示
     m_musicDuration = new QLabel(this);
     m_musicDuration->resize(80, 20);
-    m_musicDuration->move(60, 440);
+    m_musicDuration->move(60, 450);
     m_musicDuration->show();
 
 }
@@ -416,37 +423,16 @@ void MainWindow::pauseMusic()
     }
 }
 
-// 下一曲
-void MainWindow::playNextMusic()
-{
-    QMediaPlaylist* currPlayList = getCurrPlayList();
-    const int n = currPlayList->mediaCount();
-    if (n == 0) return;
-
-    int index = (currPlayList->currentIndex() + 1) % n;
-    playMusic(index);
-}
-
 // 上一曲
 void MainWindow::playPrevMusic()
 {
-    QMediaPlaylist* currPlayList = getCurrPlayList();
-    const int n = currPlayList->mediaCount();
-    if (n == 0) return;
-
-    int index = (currPlayList->currentIndex() - 1) % n;
-    playMusic(index);
+    getCurrPlayList()->previous();
 }
 
-// 随机播放
-void MainWindow::playRandomMusic()
+// 下一曲
+void MainWindow::playNextMusic()
 {
-    QMediaPlaylist* currPlayList = getCurrPlayList();
-    const int n = currPlayList->mediaCount();
-    if (n == 0) return;
-
-    int index = rand() % n;
-    playMusic(index);
+    getCurrPlayList()->next();
 }
 
 // 获取当前播放列表
@@ -516,7 +502,19 @@ void MainWindow::setWidgetTransparent(QWidget *widget, double level)
 //    palette.setColor(QPalette::Background, QColor(0x00, 0x00, 0x00, alpha));
 //    widget->setPalette(palette);
 
-    widget->setWindowOpacity(level);
+    if (widget) widget->setWindowOpacity(level);
+}
+
+// 设置播放模式
+QString MainWindow::setPlayMode(int mode) const
+{
+    using PlaybackMode = QMediaPlaylist::PlaybackMode;
+    static const QString playModeText[]{ tr("随机播放"), tr("列表循环"), tr("单曲播放") };
+    static const PlaybackMode playMode[]{ PlaybackMode::Random, PlaybackMode::Loop, PlaybackMode::CurrentItemInLoop };
+    mode = mode % 3;
+    m_musicPlayer->playlist()->setPlaybackMode(playMode[mode]);
+    m_buttonPlayMode->setText(playModeText[mode]);
+    return playModeText[mode];
 }
 
 // 获取配置文件中的值
